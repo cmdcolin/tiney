@@ -5,9 +5,14 @@
 // Note: This isn't meant to indicate good programming style, just act as an example
 //
 
-#include <glut/glut.h>
+//#include "stdafx.h"
+
 #include <cstdlib>
 #include <cstdio>
+
+#include <gl/glew.h>
+#include <gl/glut.h>
+
 
 
 GLuint fbo;					// Our handle to the FBO
@@ -19,9 +24,22 @@ GLuint f, v, p;
 const int width = 640;		// The hight of the texture we'll be rendering to
 const int height = 480;		// The width of the texture we'll be rendering to
 
-// Used for drawing the 3D cube with our rendered texture on it
+bool g_shaders;
+bool g_framebuffer;
 
-void init(GLvoid)     
+// Used for drawing the 3D cube with our rendered texture on it
+void renderBitmapString(char * s, float x, float y, float z, void * font) {
+	char * c;
+
+	for(c = s; *c != '\0'; c++) {
+		glPushMatrix();
+		glScalef(x, y, z);
+		glutBitmapCharacter(font, *c);
+		glPopMatrix();
+	}
+}
+
+void init()     
 {
 	
 	glShadeModel(GL_SMOOTH);
@@ -68,7 +86,7 @@ void init(GLvoid)
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);	// Unbind the FBO for now
 }
 
-void ShutDown(GLvoid)
+void ShutDown()
 {
 	glDeleteFramebuffersEXT(1, &fbo);
 	glDeleteRenderbuffersEXT(1, &depthBuffer);
@@ -90,14 +108,27 @@ void reshape(int w,int h)
 
 void keyboard(unsigned char key,int x,int y)  
 {
+	printf("%d\n", key);
 	switch(key)
 	{
 		case 27:				// When Escape Is Pressed...
 			ShutDown();
 			exit(0);			// Exit The Program
-			break;				
-		default:				
+			break;	
+		case GLUT_KEY_F1:
+			g_shaders = !g_shaders;
 			break;
+
+		default:	
+
+			break;
+	}
+}
+void processSpecialKeys(int key, int x, int y) {
+
+	switch(key) {
+		case GLUT_KEY_F1 : 
+				g_shaders = !g_shaders;
 	}
 }
 
@@ -148,16 +179,28 @@ void display(void)
 	glVertex3f(247, 82,0);
 	glVertex3f(307, 103,0);
 	glVertex3f(332, 133, 0);
+
 	glEnd();
+
+	glColor4f(1,1,1,1);
+	glRasterPos2i(100, 100);
+	renderBitmapString("I LOVE YOU", 10, 10, 0, GLUT_BITMAP_HELVETICA_18);
+
+	
+
 	glFlush();
 	
 	
 	glPopMatrix();
 	
-	
 	// Restore old view port and set rendering back to default frame buffer
 	glPopAttrib();
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	
+	if(g_shaders) {
+		
+		glUseProgram(p);
+	}
 	
 	glClearColor(0.0f, 0.0f, 0.2f, 0.5f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
@@ -168,6 +211,17 @@ void display(void)
 	//	below so OpenGL can generate all the mipmap data for the new main image each frame
 	//	glGenerateMipmapEXT(GL_TEXTURE_2D);
 	glEnable(GL_TEXTURE_2D);
+	glActiveTexture(GL_TEXTURE0);
+
+
+	GLuint location;
+	location=glGetUniformLocation(p, "billboardTexture");
+	glUniform1i(location, 0);
+
+	location=glGetUniformLocation(p, "billboardSize");
+	glUniform2i(location, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	location=glGetUniformLocation(p, "pixelSize");
+	glUniform1i(location, 10);
 	
 	glTranslatef(0.0f,0.0f,0);
 	
@@ -187,6 +241,10 @@ void display(void)
 	
 	glDisable(GL_TEXTURE_2D);
 	
+	if(g_shaders) {
+		
+		glUseProgram(0);
+	}
 	
 	glutSwapBuffers ( );
 	// Swap The Buffers To Not Be Left With A Clear Screen
@@ -203,7 +261,7 @@ char *textFileRead(char *fn)
 	
 	if (fn != NULL) {
 		
-		fp = fopen(fn,"rt");
+		fp = fopen(fn,"r");
 		
 		if (fp != NULL) {
 			
@@ -242,9 +300,7 @@ void printLog(GLuint obj)
 		glGetProgramInfoLog(obj, maxLength, &infologLength, infoLog);
 	
 	if (infologLength > 0)
-		printf("%s\n",infoLog);
-	else
-		printf("errir\n");
+		printf("%s: %s\n", __FUNCTION__, infoLog);
 	
 	delete [] infoLog;
 	
@@ -260,8 +316,8 @@ void setShaders() {
 	v = glCreateShader(GL_VERTEX_SHADER);
 	f = glCreateShader(GL_FRAGMENT_SHADER);	
 	
-	vs = textFileRead("./tiney.vert");
-	fs = textFileRead("./tiney.frag");
+	vs = textFileRead("tiney.vert");
+	fs = textFileRead("tiney.frag");
 	
 	const char * vv = vs;
 	const char * ff = fs;
@@ -269,10 +325,9 @@ void setShaders() {
 	glShaderSource(v, 1, &vv,NULL);
 	glShaderSource(f, 1, &ff,NULL);
 	
-	printf("x\n");
-	free(vs);free(fs);
+	free(vs);
+	free(fs);
 	
-	printf("y\n");
 	glCompileShader(v);
 	printLog(v);
 	
@@ -285,10 +340,13 @@ void setShaders() {
 	glAttachShader(p,v);
 	glAttachShader(p,f);
 	
-	printf("z\n");
 	glLinkProgram(p);
 	printLog(p);
 	glUseProgram(p);
+	printLog(p);
+	
+	
+	glUseProgram(0);
 }
 int main(int argc, char* argv[])
 {
@@ -297,15 +355,44 @@ int main(int argc, char* argv[])
 	glutInitDisplayMode ( GLUT_RGB | GLUT_DOUBLE );		// Display Mode
 	glutInitWindowSize(width,height);
 	glutCreateWindow( "" );
+
+	GLenum err = glewInit();
+	if (GLEW_OK != err)
+	{
+		/* Problem: glewInit failed, something is seriously wrong. */
+		fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+	}
+	fprintf(stdout, "Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));
 	
-	
-	init();
-	setShaders();
+	if (GLEW_VERSION_1_3) {
+		printf("Status: OpenGL 2.0\n");
+		g_shaders = true;
+	}
+	else {
+		printf("Status: no OpenGL 2.0\n");
+	}
+
+	if(GLEW_EXT_framebuffer_object) {
+		printf("Status: GLEW_EXT_framebuffer_object\n");
+		g_framebuffer = true;
+	}
+	else {
+		printf("Status: no GLEW_EXT_framebuffer_object\n");
+	}
+
+
+	if(g_framebuffer) {
+		init();
+	}
+	if(g_shaders) {
+		setShaders();
+	}
 	
 	// Setup the various call back functions GLUT requires
 	glutDisplayFunc     ( display );  
 	glutReshapeFunc     ( reshape );
 	glutKeyboardFunc    ( keyboard );
+	glutSpecialFunc( processSpecialKeys );
 	glutIdleFunc		( idle );
 	glutMainLoop        ( );			// Run the main GLUT loop for rendering
 	
