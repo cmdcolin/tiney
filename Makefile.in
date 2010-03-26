@@ -1,0 +1,2 @@
+tiney.exe : main.c
+	gcc main.c -I /usr/X11R6/include -L /usr/X11R6/lib -lglut -lglew -lglu -lgl
