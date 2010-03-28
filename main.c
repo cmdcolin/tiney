@@ -6,7 +6,7 @@
 //
 
 //#include "stdafx.h"
-
+#define GLEW_STATIC
 #include <stdlib.h>
 #include <stdio.h>
 
