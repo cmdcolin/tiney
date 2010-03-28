@@ -12,6 +12,8 @@
 
 #include <gl/glew.h>
 #include <gl/glut.h>
+#include <gl/gl.h>
+#include <gl/glu.h>
 
 
 
@@ -41,7 +43,8 @@ void renderBitmapString(char * s, float x, float y, float z, void * font) {
 
 void init()     
 {
-	
+	GLenum status;
+
 	glShadeModel(GL_SMOOTH);
 	glClearColor(0.0f, 0.0f, 0.2f, 0.5f);
 	glClearDepth(1.0f);					
@@ -79,7 +82,7 @@ void init()
 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depthBuffer);
 	
 	
-	GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if(status != GL_FRAMEBUFFER_COMPLETE_EXT)
 		exit(1);
 	
@@ -139,6 +142,10 @@ void idle(void)
 
 void display(void)   
 {
+	GLuint location;
+
+
+
 	// First we bind the FBO so we can render to it
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
 	
@@ -214,7 +221,6 @@ void display(void)
 	glActiveTexture(GL_TEXTURE0);
 
 
-	GLuint location;
 	location=glGetUniformLocation(p, "billboardTexture");
 	glUniform1i(location, 0);
 
@@ -286,13 +292,14 @@ void printLog(GLuint obj)
 {
 	int infologLength = 0;
 	int maxLength;
+	char * infoLog;
 	
 	if(glIsShader(obj))
 		glGetShaderiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
 	else
 		glGetProgramiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
 	
-	char * infoLog = (char*)malloc(sizeof(char)*maxLength);
+	infoLog = (char*)malloc(sizeof(char)*maxLength);
 	
 	if (glIsShader(obj))
 		glGetShaderInfoLog(obj, maxLength, &infologLength, infoLog);
@@ -312,6 +319,8 @@ void printLog(GLuint obj)
 void setShaders() {
 	
 	char *vs,*fs;
+	const char * vv;
+	const char * ff;
 	
 	v = glCreateShader(GL_VERTEX_SHADER);
 	f = glCreateShader(GL_FRAGMENT_SHADER);	
@@ -319,9 +328,10 @@ void setShaders() {
 	vs = textFileRead("tiney.vert");
 	fs = textFileRead("tiney.frag");
 	
-	const char * vv = vs;
-	const char * ff = fs;
-	
+	vv = vs;
+	ff = fs;
+
+
 	glShaderSource(v, 1, &vv,NULL);
 	glShaderSource(f, 1, &ff,NULL);
 	
@@ -350,13 +360,15 @@ void setShaders() {
 }
 int main(int argc, char* argv[])
 {
-	
+	GLenum err;
+
+
 	glutInit(&argc, argv);
 	glutInitDisplayMode ( GLUT_RGB | GLUT_DOUBLE );		// Display Mode
 	glutInitWindowSize(width,height);
 	glutCreateWindow( "" );
 
-	GLenum err = glewInit();
+	err = glewInit();
 	if (GLEW_OK != err)
 	{
 		/* Problem: glewInit failed, something is seriously wrong. */
